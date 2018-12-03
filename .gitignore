@@ -1,0 +1,10 @@
+*.swp
+conan_imports_manifest.txt
+/bin
+/conanbuildinfo.*
+/conaninfo.*
+/include/
+/package/
+/site-packages/
+/sip
+/pyqt-src
