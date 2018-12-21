@@ -17,7 +17,10 @@ class PyQtConan(ConanFile):
     license = "GPL-3.0-only"
     generators = "txt"
     settings = "os", "compiler", "build_type", "arch"
-    requires = "sip/4.19.13@zehome/testing"
+    requires = "sip/4.19.13@clarisys/stable", "qt/5.12.0@clarisys/stable"
+    options = {'shared': [True, False]}
+    default_options = 'shared=True'
+    exports_sources = ("pyqt5_init.py", )
     # Repackage sip
     keep_imports = True
     _source_subfolder = "pyqt-src"
@@ -29,6 +32,10 @@ class PyQtConan(ConanFile):
         if os.path.exists(self._source_subfolder):
             shutil.rmtree(self._source_subfolder)
         os.rename(extracted_dir, self._source_subfolder)
+
+    def build_requirements(self):
+        if tools.os_info.is_windows and self.settings.compiler == "Visual Studio":
+            self.build_requires("jom_installer/1.1.2@bincrafters/stable")
 
     def build(self):
         with tools.chdir(self._source_subfolder):
@@ -47,22 +54,30 @@ class PyQtConan(ConanFile):
                 raise Exception("sip.h not found")
             with tools.environment_append(envappend):
                 # QtNfc does not build on windows, disable it
-                self.run("{vc}python configure.py --confirm-license "
+                self.run("{vc}python configure.py --confirm-license {static}"
                     "--no-timestamp --no-designer-plugin --disable=QtNfc "
-                    "--qmake={qmake} -c -j{cpucount} --no-dist-info "
+                    "-c -j{cpucount} --no-dist-info "
                     "--stubsdir={stubsdir} "
                     "--bindir={bindir} "
                     "--destdir={destdir} "
                     "--sipdir={sipdir} "
+                    "--qtconf-prefix={qtconf_prefix} "
                     "--sip-incdir={sipincdir}".format(
                         cpucount=tools.cpu_count(),
                         vc="{0} && ".format(vcvars) if vcvars is not None else '',
+                        static="--static " if not self.options.shared else '',
                         bindir=os.path.join(self.build_folder, "bin"),
                         incdir=os.path.join(self.build_folder, "include"),
                         sipdir=os.path.join(self.build_folder, "sip", "PyQt5"),
                         destdir=os.path.join(self.build_folder, "site-packages"),
                         stubsdir=os.path.join(self.build_folder, "site-packages", "PyQt5"),
                         sipincdir=sipincdir,
+                        # LC: This is critical to building python wheel package
+                        # it will register an embedded version of qt.conf
+                        # which will have prefix set to Qt\, from the root of
+                        # the PyQt5 package.
+                        # You can check QResource: QtCore.QResource("qt/etc/qt.conf").data()
+                        qtconf_prefix="Qt", 
                     )
                 )
                 if self.settings.os == "Windows":
@@ -72,6 +87,7 @@ class PyQtConan(ConanFile):
                 else:
                     self.run("make -j{}".format(tools.cpu_count()))
                     self.run("make install")
+        shutil.copyfile("pyqt5_init.py", os.path.join(self.build_folder, "site-packages", "PyQt5", "__init__.py"))
 
     def package(self):
         self.copy(pattern="LICENSE", dst="licenses", src=self._source_subfolder)
