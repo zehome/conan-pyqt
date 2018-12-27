@@ -17,7 +17,7 @@ class PyQtConan(ConanFile):
     license = "GPL-3.0-only"
     generators = "txt"
     settings = "os", "compiler", "build_type", "arch"
-    requires = "sip/4.19.13@clarisys/stable", "qt/5.12.0@bincrafters/stable"
+    requires = "sip/4.19.13@clarisys/stable", "qt/5.12.0@clarisys/stable"
     options = {'shared': [True, False]}
     default_options = 'shared=True'
     exports_sources = ("pyqt5_init.py", )
