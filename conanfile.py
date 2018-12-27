@@ -17,7 +17,7 @@ class PyQtConan(ConanFile):
     license = "GPL-3.0-only"
     generators = "txt"
     settings = "os", "compiler", "build_type", "arch"
-    requires = "sip/4.19.13@clarisys/stable", "qt/5.12.0@clarisys/stable"
+    requires = "sip/4.19.13@clarisys/stable", "qt/5.12.0@bincrafters/stable"
     options = {'shared': [True, False]}
     default_options = 'shared=True'
     exports_sources = ("pyqt5_init.py", )
@@ -78,15 +78,16 @@ class PyQtConan(ConanFile):
                         # the PyQt5 package.
                         # You can check QResource: QtCore.QResource("qt/etc/qt.conf").data()
                         qtconf_prefix="Qt", 
-                    )
+                    ),
+                    run_environment=True,
                 )
                 if self.settings.os == "Windows":
                     vcvars = tools.vcvars_command(self.settings)
-                    self.run("{0} && jom".format(vcvars))
-                    self.run("{0} && jom install".format(vcvars))
+                    self.run("{0} && jom".format(vcvars), run_environment=True)
+                    self.run("{0} && jom install".format(vcvars), run_environment=True)
                 else:
-                    self.run("make -j{}".format(tools.cpu_count()))
-                    self.run("make install")
+                    self.run("make -j{}".format(tools.cpu_count()), run_environment=True)
+                    self.run("make install", run_environment=True)
         shutil.copyfile("pyqt5_init.py", os.path.join(self.build_folder, "site-packages", "PyQt5", "__init__.py"))
 
     def package(self):
