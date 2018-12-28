@@ -13,8 +13,13 @@
         - conan remote add clarisys https://conan.clarisys.fr -f
         - conan user -r clarisys clarisys
 
-conan:
+clarilabenv:
     <<: *conantemplate
     script:
         - conan create . clarisys/stable -pr=clarilabenv --build=missing
         - conan upload PyQt5/*@clarisys/stable -r clarisys -c --all
+clarilabau:
+    <<: *conantemplate
+    script:
+        - conan create . clarisys/clarilabau -pr=clarilabau --build=missing
+        - conan upload PyQt5/*@clarisys/clarilabau -r clarisys -c --all
