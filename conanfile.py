@@ -55,7 +55,7 @@ class PyQtConan(ConanFile):
             with tools.environment_append(envappend):
                 # QtNfc does not build on windows, disable it
                 self.run("{vc}python configure.py --confirm-license {static}"
-                    "--no-timestamp --no-designer-plugin --disable=QtNfc "
+                    "--no-timestamp --no-designer-plugin --no-qml-plugin --disable=QtNfc "
                     "-c -j{cpucount} --no-dist-info "
                     "--stubsdir={stubsdir} "
                     "--bindir={bindir} "
