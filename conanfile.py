@@ -18,6 +18,7 @@ class PyQtConan(ConanFile):
     generators = "txt"
     settings = "os", "compiler", "build_type", "arch"
     requires = "sip/4.19.13@clarisys/stable", "qt/5.12.0@clarisys/stable"
+    build_requires = []
     options = {'shared': [True, False]}
     default_options = 'shared=True'
     exports_sources = ("pyqt5_init.py", )
@@ -38,13 +39,17 @@ class PyQtConan(ConanFile):
             self.build_requires("jom_installer/1.1.2@bincrafters/stable")
 
     def build(self):
+        if self.settings.os == "Windows":
+            PATH = "{0};{1}".format(self.env.get("PYTHON_DIR"), os.environ["PATH"])
+        else:
+            PATH = "{0}:{1}".format(os.path.join(self.env.get("PYTHON_DIR"), "bin"), os.environ["PATH"])
         with tools.chdir(self._source_subfolder):
             if self.settings.os == "Windows":
                 vcvars = tools.vcvars_command(self.settings)
-                envappend = {"CXXFLAGS": "/bigobj"}
+                envappend = {"CXXFLAGS": "/bigobj", "PATH": PATH}
             else:
                 vcvars = None
-                envappend = {}
+                envappend = {"PATH": PATH}
             sipincdir = None
             for incdir in self.deps_cpp_info["sip"].include_paths:
                 if "sip.h" in os.listdir(incdir):
@@ -54,7 +59,7 @@ class PyQtConan(ConanFile):
                 raise Exception("sip.h not found")
             with tools.environment_append(envappend):
                 # QtNfc does not build on windows, disable it
-                self.run("{vc}python configure.py --confirm-license {static}"
+                self.run("{vc}python configure.py --confirm-license {static} --verbose "
                     "--no-timestamp --no-designer-plugin --no-qml-plugin --disable=QtNfc "
                     "-c -j{cpucount} --no-dist-info "
                     "--stubsdir={stubsdir} "
@@ -77,7 +82,7 @@ class PyQtConan(ConanFile):
                         # which will have prefix set to Qt\, from the root of
                         # the PyQt5 package.
                         # You can check QResource: QtCore.QResource("qt/etc/qt.conf").data()
-                        qtconf_prefix="Qt", 
+                        qtconf_prefix="Qt",
                     ),
                     run_environment=True,
                 )
@@ -88,7 +93,11 @@ class PyQtConan(ConanFile):
                 else:
                     self.run("make -j{}".format(tools.cpu_count()), run_environment=True)
                     self.run("make install", run_environment=True)
-        shutil.copyfile("pyqt5_init.py", os.path.join(self.build_folder, "site-packages", "PyQt5", "__init__.py"))
+        if self.settings.os == "Windows":
+            shutil.copyfile(
+                "pyqt5_init.py", os.path.join(
+                    self.build_folder, "site-packages", "PyQt5", "__init__.py"))
+        # On linux, we will do patchelf inside the Qt/ directory
 
     def package(self):
         self.copy(pattern="LICENSE", dst="licenses", src=self._source_subfolder)
@@ -102,4 +111,6 @@ class PyQtConan(ConanFile):
 
     def package_info(self):
         self.env_info.path.append(os.path.join(self.package_folder, "bin"))
-        self.env_info.pythonpath.append(os.path.join(self.package_folder, "site-packages"))
+        self.env_info.PYTHONPATH.append(os.path.join(self.package_folder, "site-packages"))
+        if self.settings.os != "Windows":
+            self.cpp_info.libdirs.append(os.path.join(self.package_folder, "lib"))
